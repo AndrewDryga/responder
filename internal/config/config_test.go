@@ -205,6 +205,54 @@ webhooks:
 	}
 }
 
+// A channel configured for a repository set has authorized work on the set's
+// primary, because the primary is the checkout the set writes to.
+//
+// On 2026-08-16 the authorization compared strings: an alert investigation
+// named `blitz-infra` — the correct repository, where the Terraform lives —
+// and the channel named the `blitz-platform` set whose primary is exactly that
+// repository, so every offer of the day was refused and no engineering task
+// button was ever rendered.
+func TestSetPrimaryIsWithinTheSetsContext(t *testing.T) {
+	cfg := Config{
+		Repositories: map[string]Repository{
+			"blitz-infra":   {CoopPolicy: "infra-observe", Path: "/srv/repos/blitz-infra"},
+			"blitz-backend": {CoopPolicy: "backend-observe", Path: "/srv/repos/blitz-backend"},
+		},
+		RepositorySets: map[string]RepositorySet{
+			"blitz-platform": {DisplayName: "All Blitz repositories", Primary: "blitz-infra"},
+			"blitz-dangling": {DisplayName: "Dangling", Primary: "blitz-missing"},
+		},
+	}
+	for name, test := range map[string]struct {
+		context    string
+		repository string
+		want       bool
+	}{
+		"a repository is within itself":          {"blitz-infra", "blitz-infra", true},
+		"a set is within itself":                 {"blitz-platform", "blitz-platform", true},
+		"the primary is within its set":          {"blitz-platform", "blitz-infra", true},
+		"surrounding whitespace is not a name":   {" blitz-platform ", " blitz-infra ", true},
+		"a companion is not within the set":      {"blitz-platform", "blitz-backend", false},
+		"a set is not within its own primary":    {"blitz-infra", "blitz-platform", false},
+		"an unknown context holds nothing":       {"blitz-unknown", "blitz-infra", false},
+		"an unknown repository is not within":    {"blitz-platform", "blitz-unknown", false},
+		"a set whose primary is not configured":  {"blitz-dangling", "blitz-missing", false},
+		"an empty context authorizes nothing":    {"", "blitz-infra", false},
+		"an empty repository is not authorized":  {"blitz-platform", "", false},
+		"two empty names do not make a boundary": {"", "", false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got := cfg.RepositoryWithinContext(test.context, test.repository); got != test.want {
+				t.Fatalf(
+					"RepositoryWithinContext(%q, %q) = %v, want %v",
+					test.context, test.repository, got, test.want,
+				)
+			}
+		})
+	}
+}
+
 func TestLegacyOutboxLimitSeedsOnlyUnspecifiedFailureBudgets(t *testing.T) {
 	cfg := defaults()
 	data := []byte(`limits:
