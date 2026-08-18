@@ -86,6 +86,12 @@ func alertInput(channelID string) core.SlackInput {
 // the model had named correctly. The author of an alert is the Grafana app,
 // which is never an operator, so the offer took the workspace-member path and
 // compared "blitz-infra" to the set name "blitz-platform" as strings.
+// Covers: TestAlertPreparedFixForRepositorySetPrimaryRemainsActionable
+// Covers: TestPreparedAlertTaskUsesActiveRepositorySetWhenOfferNamesItsPrimary
+// Covers: TestRepositorySetPrimaryOfferUsesChannelWritableContext
+// Covers: TestPrimaryRepositoryOfferUsesTheChannelsRepositorySet
+// Covers: TestPreparedFixFromExternalAlertSurvivesBotIdentity
+// Covers: TestPrimaryRepositoryOfferUsesAuthorizedRepositorySet
 func TestAlertOfferAcceptsTheSetsPrimaryRepository(t *testing.T) {
 	ctx := context.Background()
 	cfg := accessConfig()
